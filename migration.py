@@ -55,7 +55,7 @@ def replace_nans(name):
 
 counter = 21576
 import glob
-files = glob.glob("C:/Users/prost/Dropbox/myvstup/competitions/*.csv")
+files = glob.glob("competitions/*.csv")
 
 full_data = []
 for f in files:
@@ -91,7 +91,6 @@ for f in files:
                 obligative_zno = []
                 extra_zno_list = []
                 if str in [type(i) for i in list(temp_dict.values())]:
-                
                     str_indexes = [j for j,i in enumerate([type(i) for i in list(temp_dict.values())]) if i==str]
                     for str_item in str_indexes:
                         str_value = temp_dict[list(temp_dict.keys())[str_item]]
@@ -130,11 +129,19 @@ for f in files:
 
                 data_row['zno_coefs'] = coefs_dict
 
+                fach_tvorch_points = row[8].replace('[','').replace(']','').split(',')
+                if len(fach_tvorch_points)!=0:
+                    data_row['fach_tvorch_coefs'] = {}
+
                 data_row['tvorchNeeded'] = False
                 data_row['fach_testNeeded'] = False
 
                 for zno_name in list(coefs_dict.keys()):
                     if zno_name in fach_tvorch:
+    
+                        try: data_row['fach_tvorch_coefs'].update({zno_name:float(fach_tvorch_points[0])})
+                        except IndexError : pass
+                        except ValueError : pass
                         data_row[str(zno_name[:-2]+'Needed')] = True
 
                 data_row['link'] = row[10]
@@ -143,7 +150,7 @@ for f in files:
                     data_row['isFreePlaces'] = True
                 else: data_row['isFreePlaces'] = False
 
-                if data_row['point_mid_median']!=1000:
+                if 'Вступна' not in data_row['universityName']:
                     db.info.insert_one( data_row )
                 counter -= 1
                 print ('left %s'%counter)
