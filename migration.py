@@ -55,7 +55,7 @@ def replace_nans(name):
 
 counter = 21576
 import glob
-files = glob.glob("competitions/*.csv")
+files = glob.glob("c:/users/prost/dropbox/myvstup/competitions/*.csv")
 
 full_data = []
 for f in files:
