@@ -10,22 +10,11 @@ from pymongo import MongoClient
 db = MongoClient('mongodb://lina:lina123@ds061395.mlab.com:61395/heroku_nlhh4h9z').heroku_nlhh4h9z
 
 data=[]
-#x = db.info.find({'tvorchNeeded': True, {'zno_coefs.tvorch_1': {$lt: 0.5}}})
-#x = db.info.find({'point_median': {'$gt':150}})
-#x = db.info.find({'tvorchNeeded': True, 'zno_coefs.tvorch_1': {'$lt': 0.5}})
-#x = db.info.find({'tvorchNeeded': True, 'zno_coefs.tvorch_1': 1})
 
-#db.info.update({'tvorchNeeded': True, 'zno_coefs.tvorch_1': {'$lt': 1.5}}, {'$set':{'score_case': 1}}, upsert=True, multi=True)
+#from bson import ObjectId
 
-#x = db.info.find({'tvorchNeeded': True, 'zno_coefs.tvorch_1': {'$lt': 1.5}})
-'''
-from bson import ObjectId
 
-useless_id = [data[i]['_id'] for i in range(0,10)]
-db.info.remove({'_id' : { '$in' : useless_id } })
-'''
 
-#x = db.info.find({'score_case': 1})
 x= db.info.find({'tvorchNeeded': True})
 for i in x:
     data.append(i)
@@ -35,37 +24,62 @@ for i in x:
     data.append(i)
 
 
+
 for i in range(0,len(data)):
-    if data[i]['possible_combinations']==[]:
+    if data[i]['possible_combinations']==[[]]:
         data[i]['score_case']=4
-    elif sum(data[i]['zno_coefs'].values()) < 1:
-        data[i]['score_case']=1
-    elif len(data[i]['fach_tvorch_coefs'].keys())==1:
-        data[i]['score_case']=2
-    else:
+    elif len(data[i]['fach_tvorch_coefs'].keys())>1:
         data[i]['score_case']=3
-          
+    else:
+        try:
+            if data[i]['zno_coefs']['tvorch_1']<1:
+                data[i]['score_case']=1
+            else:
+                data[i]['score_case']=2
+        except KeyError:
+            if data[i]['zno_coefs']['fach_test_1']<1:
+                data[i]['score_case']=1
+            else:
+                data[i]['score_case']=2
+     
         
-        
-        
+id_to_change_1=[data[i]['_id'] for i in range(0, len(data)) if data[i]['score_case']==1]
+id_to_change_2=[data[i]['_id'] for i in range(0, len(data)) if data[i]['score_case']==2]
+id_to_change_3=[data[i]['_id'] for i in range(0, len(data)) if data[i]['score_case']==3]
+id_to_change_4=[data[i]['_id'] for i in range(0, len(data)) if data[i]['score_case']==4]
 
 
-#data=[i for i in x if len(i['zno_coefs'].keys())==3]
 
-#data={ 1:i for i in x}
 '''
+data1=[]
+data2=[]
+data3=[]
+data4=[]  
+for i in range(0,len(data)):
+    if data[i]['score_case']==1:
+        data1.append(data[i])
+for i in range(0,len(data)):
+    if data[i]['score_case']==2:
+        data2.append(data[i])
+for i in range(0,len(data)):
+    if data[i]['score_case']==3:
+        data3.append(data[i])
+for i in range(0,len(data)):
+    if data[i]['score_case']==4:
+        data4.append(data[i])
+'''
+
+
+
+db.info.update_many({'_id': {'$in': id_to_change_1}, }, {'$set':{'score_case': 1}}, upsert=True)
+db.info.update_many({'_id': {'$in': id_to_change_2}, }, {'$set':{'score_case': 2}}, upsert=True)
+db.info.update_many({'_id': {'$in': id_to_change_3}, }, {'$set':{'score_case': 3}}, upsert=True)
+db.info.update_many({'_id': {'$in': id_to_change_4}, }, {'$set':{'score_case': 4}}, upsert=True)
+
+
+
+x=db.info.find({})
+newdata=[]
 for i in x:
-    if len(i['zno_coefs'].keys())==0:
-        data.append(i)
-'''
-'''
-for i in x:
-    if 'zno_coefs' in i.keys():
-        data.append(i)
-'''       
-'''
-print(i.keys())
-print(len(i.keys()))
-print(i['cityName'])
-print(len(i['zno_coefs'].keys()))
-'''
+    newdata.append(i)
+
