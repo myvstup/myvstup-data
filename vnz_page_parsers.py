@@ -45,7 +45,8 @@ class VNZparser:
                 table['Конкурс'].map(lambda r: {  # iterating on 'Конкурс' column
                     'num_applied': re.compile(p).search(r).group(2),
                     'num_recommended': re.compile(p).search(r).group(4),
-                    'num_entered': re.compile(p).search(r).group(6),
+                    'num_entered': re.compile(p).search(r).group(6)
+                    if re.compile(p).search(r).group(6) is not None else 0,
                     'competition_link': re.compile(p).search(r).group(7)
                 }).tolist()))
         table.drop('Конкурс', axis=1, inplace=True)
@@ -61,6 +62,7 @@ class VNZparser:
                 table['Обсяги'].map(lambda r: {
                     'paid_places': re.compile(p).search(r).group(2),
                     'free_places': re.compile(p).search(r).group(4)
+                    if re.compile(p).search(r).group(4) is not None else 0
                 }).tolist()))
         table.drop('Обсяги', axis=1, inplace=True)
 
@@ -104,13 +106,16 @@ class VNZparser:
                     'degree': re.compile(p).search(r).group(1),
                     'degree_subname': re.compile(p).search(r).group(3)
                 }).tolist()))
-        p = r'(\,\s?[Ф|ф]акультет:)\s?\,?([а-яА-ЯїґєіІ\’\-\" \s*]+)?\,?((.*)?\,)?([а-яА-ЯїґєіІ\’\-\,\" \s*]+)?'
+        p = r'(\,\s?[Ф|ф]акультет:)\s?\,?([а-яА-ЯїґєіІ\’\'\-\" \s*]+)?\,?((.*)?\,)?([а-яА-ЯїґєіІ\’\'\-\,\" \s*]+)?'
         table = table.join(
             pd.DataFrame(
                 table['Спеціальність'].map(lambda r: {
                     'faculty': re.compile(p).search(r).group(2),
-                    'specialization_1': re.compile(p).search(r).group(4),
-                    'specialization_2': re.compile(p).search(r).group(5),
+                    'specialization_1': re.compile(p).search(r).group(4)
+                    if re.compile(p).search(r).group(4) is not None else
+                    re.compile(p).search(r).group(5),
+                    'specialization_2': re.compile(p).search(r).group(5)
+                    if re.compile(p).search(r).group(4) is not None else None
                 }).tolist()))
 
         table.drop('Спеціальність', axis=1, inplace=True)
