@@ -21,8 +21,8 @@ class VNZparser:
     @staticmethod
     def combine_data(html_text, data_type):
         table = pd.DataFrame()
-        for table in pd.read_html(html_text):
-            table = table.append(table)
+        for part in pd.read_html(html_text):
+            table = table.append(part)
 
         table = table[table['Спеціальність'] != 'Спеціальність']
         table = table[
@@ -44,10 +44,12 @@ class VNZparser:
             pd.DataFrame(  # new dataframe with parsed text
                 table['Конкурс'].map(lambda r: {  # iterating on 'Конкурс' column
                     'num_applied': re.compile(p).search(r).group(2),
-                    'num_recommended': re.compile(p).search(r).group(4),
+                    'num_recommended': re.compile(p).search(r).group(4)
+                    if re.compile(p).search(r).group(4) is not None else None,
                     'num_entered': re.compile(p).search(r).group(6)
                     if re.compile(p).search(r).group(6) is not None else 0,
                     'competition_link': re.compile(p).search(r).group(7)
+                    if re.compile(p).search(r).group(6) is not None else None
                 }).tolist()))
         table.drop('Конкурс', axis=1, inplace=True)
 
@@ -60,9 +62,10 @@ class VNZparser:
         table = table.join(
             pd.DataFrame(
                 table['Обсяги'].map(lambda r: {
-                    'paid_places': re.compile(p).search(r).group(2),
+                    'paid_places': re.compile(p).search(r).group(2)
+                    if re.compile(p).search(r) is not None else 0,
                     'free_places': re.compile(p).search(r).group(4)
-                    if re.compile(p).search(r).group(4) is not None else 0
+                    if re.compile(p).search(r) is not None else 0
                 }).tolist()))
         table.drop('Обсяги', axis=1, inplace=True)
 
@@ -112,10 +115,10 @@ class VNZparser:
                 table['Спеціальність'].map(lambda r: {
                     'faculty': re.compile(p).search(r).group(2),
                     'specialization_1': re.compile(p).search(r).group(4)
-                    if re.compile(p).search(r).group(4) is not None else
+                    if re.compile(p).search(r) is not None else
                     re.compile(p).search(r).group(5),
                     'specialization_2': re.compile(p).search(r).group(5)
-                    if re.compile(p).search(r).group(4) is not None else None
+                    if re.compile(p).search(r) is not None else None
                 }).tolist()))
 
         table.drop('Спеціальність', axis=1, inplace=True)
@@ -126,23 +129,33 @@ class VNZparser:
 class VNZPage(VNZparser):
     def __init__(self):
         self.passed = True
+        self.data = pd.DataFrame()
         super(VNZparser).__init__()
 
-    def get_data(self, link):
+    def parse_data(self, link):
         self.link = link
         self.html = requests.get(link).content.decode()
-        uni_info_table = self.check_data()
+        self.check_data()
         if self.passed:
             den_html, zao_html = self.spliting_data()
-            den_data = self.convert_html_to_df(den_html, 'd')
-            zao_data = self.convert_html_to_df(zao_html, 'z')
-            return den_data.append(zao_data)
+            if den_html is not None:
+                den_data = self.convert_html_to_df(den_html, 'd')
+            else:
+                den_data = pd.DataFrame()
+            if zao_html is not None:
+                zao_data = self.convert_html_to_df(zao_html, 'z')
+            else:
+                zao_data = pd.DataFrame()
+            self.data = den_data.append(zao_data)
 
     def check_data(self):
         self.html = re.sub('<a.*?href="(.*?)">(.*?)</a>', '\\1 \\2', self.html)
-        temp = pd.read_html(self.html)
-
         # checking on tables in html
+        try:
+            temp = pd.read_html(self.html)
+        except ValueError:
+            self.passed = False
+            return logger.info('No tables found at %s' % self.link)
         try:
             uni_info_table = temp[0]
         except IndexError:
@@ -155,9 +168,12 @@ class VNZPage(VNZparser):
                                  1: 'uni_info'}) \
                 .set_index("data_type")
             uni_info_table.index = uni_info_table.index.map(UNI_INFO_MAPPER.get)
+            self.uni_info_table = uni_info_table
             logger.info('Working with "%s"' % uni_info_table.ix['uni_name'].values[0])
-            return uni_info_table
-        except AttributeError:
+        except AttributeError :
+            self.passed = False
+            return logger.info('Link %s is broken.' % self.link)
+        except KeyError:
             self.passed = False
             return logger.info('Link %s is broken.' % self.link)
 
@@ -165,16 +181,18 @@ class VNZPage(VNZparser):
         den_part = [i.start() for i in re.finditer(r'(<!-- den -->)', self.html)]
         zao_part = [i.start() for i in re.finditer(r'(<!-- zao -->)', self.html)]
 
-        if len(den_part) == 2:
+        try:
+            pd.read_html(self.html[den_part[0]:den_part[1]])
             den_html = self.html[den_part[0]:den_part[1]]
-        else:
-            logger.info('Smt starange with "den" part in %s' % self.link)
-            den_html = ''
-        if len(zao_part) == 2:
+        except ValueError:
+            logger.info("No data for 'denna' study type.")
+            den_html = None
+        try:
+            pd.read_html(self.html[zao_part[0]: zao_part[1]])
             zao_html = self.html[zao_part[0]: zao_part[1]]
-        else:
-            logger.info('Smt strange with "zao" part in %s' % self.link)
-            zao_html = ''
+        except ValueError:
+            logger.info("No data for 'zaochna' study type.")
+            zao_html = None
         return den_html, zao_html
 
     def convert_html_to_df(self, html_text, data_type):
@@ -186,3 +204,9 @@ class VNZPage(VNZparser):
         final_table = self.parse_specialities(final_table)
 
         return final_table
+
+    def get_uni_info(self):
+        return self.uni_info_table
+
+    def get_uni_data(self):
+        return self.data
