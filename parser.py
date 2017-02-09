@@ -13,16 +13,28 @@ from vnz_page_parsers import VNZPage
 Session = sessionmaker()
 
 
-def configure_db(db_path):
-
-    engine = \
-        create_engine('postgres://fsjdaxsj:CCzRO_-W8ESoNM8XmbMNZ6uzkCF5xTWc@horton.elephantsql.com:5432/fsjdaxsj',
-                      echo=False, encoding='utf-8')
-#    if os.path.exists(db_path):
-#        Session.configure(bind=engine)
-#    else:
+def configure_db(args):
+    if args.local_db:
+        engine = create_engine("../data/" + args.name + ".db",
+                               echo=False, encoding='utf-8')
+    else:
+        engine = create_engine(os.getenv('POSTGRES_MYVSTUP'),
+                               echo=False, encoding='utf-8')
     Base.metadata.create_all(engine)
     Session.configure(bind=engine)
+
+
+def clean_db():
+    q = """
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema='public'
+      AND table_type='BASE TABLE';"""
+    session = Session()
+    resp = session.execute(q)
+    tables_names = [i[0] for i in resp]
+
+    session.execute("TRUNCATE TABLE %s " % ','.join(tables_names))
 
 
 def populate_cities_table():
@@ -146,15 +158,19 @@ if __name__ == "__main__":
                             help='Drop all data from db',
                             action='store_true',
                             default=False)
+    arg_parser.add_argument('-l',
+                            '--local_db',
+                            help='Create local db.',
+                            action='store_true',
+                            default=False)
     args = arg_parser.parse_args()
 
-    if args.clean_db:
-        os.remove('../data/%s.db' % args.name)
+    configure_db(args)
 
-    if args.name is None:
-        configure_db('../data/test.db')
-    else:
-        configure_db('../data/%s.db' % args.name)
+    if args.clean_db and args.local_db:
+        os.remove('../data/%s.db' % args.name)
+    elif args.clean_db:
+        clean_db()
 
     populate_cities_table()
     populate_uni_info_table()
