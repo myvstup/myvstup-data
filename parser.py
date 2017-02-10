@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 from database import *
 from competition_page_parsers import CompetitionPage
 from vnz_page_parsers import VNZPage
+from multiproc_guard import add_engine_pidguard
 
 Session = sessionmaker()
 
@@ -20,6 +21,7 @@ def configure_db(args):
     else:
         engine = create_engine(os.getenv('POSTGRES_MYVSTUP'),
                                echo=False, encoding='utf-8')
+    add_engine_pidguard(engine)
     Base.metadata.create_all(engine)
     Session.configure(bind=engine)
 
@@ -35,7 +37,7 @@ def clean_db():
     tables_names = [i[0] for i in resp]
 
     session.execute("TRUNCATE TABLE %s " % ','.join(tables_names))
-
+    session.commit()
 
 def populate_cities_table():
     logger.info("Populating cities...")
@@ -147,6 +149,10 @@ def get_universities_links(city_link):
     return list(zip(vnz, links, uni_type))
 
 
+def run_parser(cities):
+    populate_uni_info_table(cities)
+
+
 if __name__ == "__main__":
 
     arg_parser = ArgumentParser('Parsing data from vstup.info')
@@ -173,4 +179,12 @@ if __name__ == "__main__":
         clean_db()
 
     populate_cities_table()
-    populate_uni_info_table()
+
+    session = Session()
+    cities = [city.name for city in session.query(City).all()]
+    cities_chunks = []
+    for i in range(0, 2):
+        cities_chunks += [cities[i*14:(i+1)*14]]
+    from multiprocessing import Pool
+    with Pool(2) as p:
+        p.map(run_parser, cities_chunks)

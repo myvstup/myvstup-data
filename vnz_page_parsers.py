@@ -106,14 +106,17 @@ class VNZparser:
         table = table.join(
             pd.DataFrame(
                 table['Спеціальність'].map(lambda r: {
-                    'degree': re.compile(p).search(r).group(1),
+                    'degree': re.compile(p).search(r).group(1)
+                    if re.compile(p).search(r) is not None else None,
                     'degree_subname': re.compile(p).search(r).group(3)
+                    if re.compile(p).search(r) is not None else None
                 }).tolist()))
         p = r'(\,\s?[Ф|ф]акультет:)\s?\,?([а-яА-ЯїґєіІ\’\'\-\" \s*]+)?\,?((.*)?\,)?([а-яА-ЯїґєіІ\’\'\-\,\" \s*]+)?'
         table = table.join(
             pd.DataFrame(
                 table['Спеціальність'].map(lambda r: {
-                    'faculty': re.compile(p).search(r).group(2),
+                    'faculty': re.compile(p).search(r).group(2)
+                    if re.compile(p).search(r) is not None else None,
                     'specialization_1': re.compile(p).search(r).group(4)
                     if re.compile(p).search(r) is not None else
                     re.compile(p).search(r).group(5),
