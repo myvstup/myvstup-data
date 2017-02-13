@@ -43,14 +43,16 @@ class VNZparser:
         table = table.join(
             pd.DataFrame(  # new dataframe with parsed text
                 table['Конкурс'].map(lambda r: {  # iterating on 'Конкурс' column
-                    'num_applied': re.compile(p).search(r).group(2),
-                    'num_recommended': re.compile(p).search(r).group(4)
-                    if re.compile(p).search(r).group(4) is not None else None,
-                    'num_entered': re.compile(p).search(r).group(6)
-                    if re.compile(p).search(r).group(6) is not None else 0,
-                    'competition_link': re.compile(p).search(r).group(7)
-                    if re.compile(p).search(r).group(6) is not None else None
-                }).tolist()))
+                    'num_applied': 0 if re.compile(p).search(r).group(2) is None
+                    else int(re.compile(p).search(r).group(2)),
+                    'num_recommended': 0 if re.compile(p).search(r).group(4) is None
+                    else int(re.compile(p).search(r).group(4)),
+                    'num_entered': 0 if re.compile(p).search(r).group(6) is None
+                    else int(re.compile(p).search(r).group(6)),
+                    'competition_link': '' if re.compile(p).search(r).group(7) is None
+                    else re.compile(p).search(r).group(7)
+                } if re.compile(p).search(r) is not None
+                else {}).tolist()))
         table.drop('Конкурс', axis=1, inplace=True)
 
         return table
@@ -62,11 +64,12 @@ class VNZparser:
         table = table.join(
             pd.DataFrame(
                 table['Обсяги'].map(lambda r: {
-                    'paid_places': re.compile(p).search(r).group(2)
-                    if re.compile(p).search(r) is not None else 0,
-                    'free_places': re.compile(p).search(r).group(4)
-                    if re.compile(p).search(r) is not None else 0
-                }).tolist()))
+                    'paid_places': 0 if re.compile(p).search(r).group(2) is None
+                    else int(re.compile(p).search(r).group(2)),
+                    'free_places': 0 if re.compile(p).search(r).group(4) is None
+                    else int(re.compile(p).search(r).group(4))
+                } if re.compile(p).search(r) is not None
+                else {}).tolist()))
         table.drop('Обсяги', axis=1, inplace=True)
 
         return table
@@ -80,14 +83,16 @@ class VNZparser:
         table['required_subj'] = table['Предмети'].astype(str) \
             .map(re.compile(splitter).split) \
             .map(lambda r: [i.strip() for i in r if i != '']) \
-            .map(lambda r: [
-                {i.replace('або ', '').strip(): re.search(scores, l).group(1)
-                 if re.search(scores, l) is not None else "1"
-                 for i in re.findall(subjects, l) if i.strip() != ''}
-                for l in r]).tolist()
+            .map(lambda r: [{
+                                i.replace('або ', '').strip(): re.search(scores, l).group(1)
+                                if re.search(scores, l) is not None else "1"
+                                for i in re.findall(subjects, l) if i.strip() != ''}
+                            for l in r]).tolist()
         table['required_subj'] = table['required_subj'] \
-            .map(lambda r: [{k: v for k, v in d.items()
-                             if k != 'Іноземна мова'} if 'Іноземна мова' in d and len(d) > 1 else d
+            .map(lambda r: [{
+                                k: v for k, v in d.items()
+                                if k != 'Іноземна мова'}
+                            if 'Іноземна мова' in d and len(d) > 1 else d
                             for d in r])
 
         # splitting by numerators like "1. ", "2. ", "3. "
@@ -107,22 +112,24 @@ class VNZparser:
             pd.DataFrame(
                 table['Спеціальність'].map(lambda r: {
                     'degree': re.compile(p).search(r).group(1)
-                    if re.compile(p).search(r) is not None else None,
+                    if re.compile(p).search(r).group(1) is not None else None,
                     'degree_subname': re.compile(p).search(r).group(3)
-                    if re.compile(p).search(r) is not None else None
-                }).tolist()))
+                    if re.compile(p).search(r).group(3) is not None else None
+                } if re.compile(p).search(r) is not None
+                else {}).tolist()))
         p = r'(\,\s?[Ф|ф]акультет:)\s?\,?([а-яА-ЯїґєіІ\’\'\-\" \s*]+)?\,?((.*)?\,)?([а-яА-ЯїґєіІ\’\'\-\,\" \s*]+)?'
         table = table.join(
             pd.DataFrame(
                 table['Спеціальність'].map(lambda r: {
                     'faculty': re.compile(p).search(r).group(2)
-                    if re.compile(p).search(r) is not None else None,
+                    if re.compile(p).search(r).group(2) is not None else None,
                     'specialization_1': re.compile(p).search(r).group(4)
-                    if re.compile(p).search(r) is not None else
+                    if re.compile(p).search(r).group(4) is not None else
                     re.compile(p).search(r).group(5),
                     'specialization_2': re.compile(p).search(r).group(5)
                     if re.compile(p).search(r) is not None else None
-                }).tolist()))
+                } if re.compile(p).search(r) is not None
+                else {}).tolist()))
 
         table.drop('Спеціальність', axis=1, inplace=True)
 
@@ -173,7 +180,7 @@ class VNZPage(VNZparser):
             uni_info_table.index = uni_info_table.index.map(UNI_INFO_MAPPER.get)
             self.uni_info_table = uni_info_table
             logger.info('Working with "%s"' % uni_info_table.ix['uni_name'].values[0])
-        except AttributeError :
+        except AttributeError:
             self.passed = False
             return logger.info('Link %s is broken.' % self.link)
         except KeyError:
