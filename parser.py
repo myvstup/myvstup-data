@@ -3,6 +3,7 @@ import os
 import requests
 import re
 import pandas as pd
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from argparse import ArgumentParser
@@ -10,7 +11,14 @@ from database import *
 from competition_page_parsers import CompetitionPage
 from vnz_page_parsers import VNZPage
 from multiproc_guard import add_engine_pidguard
+from psycopg2.extensions import register_adapter, AsIs
 
+
+def addapt_numpy_float64(numpy_float64):
+    return AsIs(numpy_float64)
+
+
+register_adapter(np.int64, addapt_numpy_float64)
 Session = sessionmaker()
 
 
