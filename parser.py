@@ -1,4 +1,4 @@
-from logging import logging
+import logging
 import os
 import requests
 import re
