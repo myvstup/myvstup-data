@@ -29,7 +29,7 @@ def configure_db(args):
         engine = create_engine("../data/" + args.name + ".db",
                                echo=False, encoding='utf-8')
     else:
-        engine = create_engine(os.getenv('DATABASE_MYVSTUP'),
+        engine = create_engine(os.getenv('DATABASE_MYVSTUP') + "?charset=utf8",
                                echo=False, encoding='utf-8')
     add_engine_pidguard(engine)
     Base.metadata.create_all(engine)
