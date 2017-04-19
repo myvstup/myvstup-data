@@ -1,4 +1,4 @@
-from logger import logger
+from logging import logging
 import os
 import requests
 import re
@@ -20,14 +20,17 @@ def addapt_numpy_float64(numpy_float64):
 
 register_adapter(np.int64, addapt_numpy_float64)
 Session = sessionmaker()
-
+logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s',
+                    level='INFO',
+                    filename=u'frames_getter.log')
+logger = logging.getLogger(__name__)
 
 def configure_db(args):
     if args.local_db:
         engine = create_engine("../data/" + args.name + ".db",
                                echo=False, encoding='utf-8')
     else:
-        engine = create_engine(os.getenv('POSTGRES_MYVSTUP'),
+        engine = create_engine(os.getenv('DATABASE_MYVSTUP'),
                                echo=False, encoding='utf-8')
     add_engine_pidguard(engine)
     Base.metadata.create_all(engine)
