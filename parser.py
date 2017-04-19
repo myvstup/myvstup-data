@@ -45,9 +45,9 @@ def clean_db():
     session = Session()
     resp = session.execute(q)
     tables_names = [i[0] for i in resp]
-
-    session.execute("TRUNCATE TABLE %s " % ','.join(tables_names))
-    session.commit()
+    if len(tables_names) != 0:
+        session.execute("DROP TABLE %s " % ','.join(tables_names))
+        session.commit()
 
 def populate_cities_table():
     logger.info("Populating cities...")
