@@ -16,9 +16,8 @@ from psycopg2.extensions import register_adapter, AsIs
 
 def addapt_numpy_float64(numpy_float64):
     return AsIs(numpy_float64)
-
-
 register_adapter(np.int64, addapt_numpy_float64)
+
 Session = sessionmaker()
 logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s',
                     level='INFO',
