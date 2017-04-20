@@ -21,12 +21,13 @@ register_adapter(np.int64, addapt_numpy_float64)
 Session = sessionmaker()
 logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s',
                     level='INFO',
-                    filename=u'frames_getter.log')
+                    filename=u'parser.log')
 logger = logging.getLogger(__name__)
+
 
 def configure_db(args):
     if args.local_db:
-        engine = create_engine("../data/" + args.name + ".db",
+        engine = create_engine("mysql://username:password@127.0.0.1/myvstup",
                                echo=False, encoding='utf-8')
     else:
         engine = create_engine(os.getenv('DATABASE_MYVSTUP') + "?charset=utf8",
@@ -183,9 +184,7 @@ if __name__ == "__main__":
 
     configure_db(args)
 
-    if args.clean_db and args.local_db:
-        os.remove('../data/%s.db' % args.name)
-    elif args.clean_db:
+    if args.clean_db:
         clean_db()
 
     populate_cities_table()
