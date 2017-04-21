@@ -16,6 +16,8 @@ from psycopg2.extensions import register_adapter, AsIs
 
 def addapt_numpy_float64(numpy_float64):
     return AsIs(numpy_float64)
+
+
 register_adapter(np.int64, addapt_numpy_float64)
 
 Session = sessionmaker()
@@ -49,6 +51,7 @@ def clean_db():
     if len(tables_names) != 0:
         session.execute("DROP TABLE %s " % ','.join(tables_names))
         session.commit()
+
 
 def populate_cities_table():
     logger.info("Populating cities...")
@@ -193,7 +196,8 @@ if __name__ == "__main__":
     cities = [city.name for city in session.query(City).all()]
     cities_chunks = []
     for i in range(0, 2):
-        cities_chunks += [cities[i*14:(i+1)*14]]
+        cities_chunks += [cities[i * 14:(i + 1) * 14]]
     from multiprocessing import Pool
+
     with Pool(2) as p:
         p.map(run_parser, cities_chunks)
