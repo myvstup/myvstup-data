@@ -1,4 +1,3 @@
-from logger import logger
 import pandas as pd
 import re
 import requests
@@ -16,7 +15,8 @@ COMPETITION_MAPPER = {
 
 
 class CompetitionPage:
-    def __init__(self):
+    def __init__(self, logger):
+        self.logger = logger
         self.passed = True
 
     def check_link(self):
@@ -25,17 +25,17 @@ class CompetitionPage:
             p = r"\<table id=\"(\d+)\" class=\"tablesaw tablesaw\-stack"
             self.competition_id = int(re.search(p, self.html).group(1))
         except ValueError:
-            logger.info("Can't parse competition on %s" % self.link)
+            self.logger.info("Can't parse competition on %s" % self.link)
             self.passed = False
 
     def read_dataframe(self):
         try:
             self.table = pd.read_html(self.html, attrs={'id': str(self.competition_id)})[0]
         except TypeError:
-            logger.info("Can't read table on %s" % self.link)
+            self.logger.info("Can't read table on %s" % self.link)
             self.passed = False
         except IndexError:
-            logger.info("Something strange is going on in w/ tables %s" % self.link)
+            self.logger.info("Something strange is going on in w/ tables %s" % self.link)
             self.passed = False
 
     def format_dataframe(self):

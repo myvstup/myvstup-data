@@ -1,4 +1,3 @@
-from logger import logger
 import pandas as pd
 import re
 import requests
@@ -137,9 +136,10 @@ class VNZparser:
 
 
 class VNZPage(VNZparser):
-    def __init__(self):
+    def __init__(self, logger):
         self.passed = True
         self.data = pd.DataFrame()
+        self.logger = logger
         super(VNZparser).__init__()
 
     def parse_data(self, link):
@@ -165,12 +165,12 @@ class VNZPage(VNZparser):
             temp = pd.read_html(self.html)
         except ValueError:
             self.passed = False
-            return logger.info('No tables found at %s' % self.link)
+            return self.logger.info('No tables found at %s' % self.link)
         try:
             uni_info_table = temp[0]
         except IndexError:
             self.passed = False
-            return logger.info('Link %s is broken.' % self.link)
+            return self.logger.info('Link %s is broken.' % self.link)
         # checking on basic info about uni
         try:
             uni_info_table = uni_info_table \
@@ -179,13 +179,13 @@ class VNZPage(VNZparser):
                 .set_index("data_type")
             uni_info_table.index = uni_info_table.index.map(UNI_INFO_MAPPER.get)
             self.uni_info_table = uni_info_table
-            logger.info('Working with "%s"' % uni_info_table.ix['uni_name'].values[0])
+            self.logger.info('Working with "%s"' % uni_info_table.ix['uni_name'].values[0])
         except AttributeError:
             self.passed = False
-            return logger.info('Link %s is broken.' % self.link)
+            return self.logger.info('Link %s is broken.' % self.link)
         except KeyError:
             self.passed = False
-            return logger.info('Link %s is broken.' % self.link)
+            return self.logger.info('Link %s is broken.' % self.link)
 
     def spliting_data(self):
         den_part = [i.start() for i in re.finditer(r'(<!-- den -->)', self.html)]
@@ -195,13 +195,13 @@ class VNZPage(VNZparser):
             pd.read_html(self.html[den_part[0]:den_part[1]])
             den_html = self.html[den_part[0]:den_part[1]]
         except ValueError:
-            logger.info("No data for 'denna' study type.")
+            self.logger.info("No data for 'denna' study type.")
             den_html = None
         try:
             pd.read_html(self.html[zao_part[0]: zao_part[1]])
             zao_html = self.html[zao_part[0]: zao_part[1]]
         except ValueError:
-            logger.info("No data for 'zaochna' study type.")
+            self.logger.info("No data for 'zaochna' study type.")
             zao_html = None
         return den_html, zao_html
 

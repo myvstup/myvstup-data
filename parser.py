@@ -18,45 +18,51 @@ def addapt_numpy_float64(numpy_float64):
     return AsIs(numpy_float64)
 
 
-register_adapter(np.int64, addapt_numpy_float64)
+def get_logger():
+    logging.basicConfig(level=logging.INFO,
+                        datefmt="%Y-%m-%d%H:%M:%S",
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                        filename='parser.log',
+                        filemode='w')
 
-Session = sessionmaker()
-logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s',
-                    level='INFO',
-                    filename=u'parser.log')
-logger = logging.getLogger(__name__)
+    return logging.getLogger(__name__)
 
 
 def configure_db(args):
+
     if args.local_db:
-        engine = create_engine("mysql://username:password@127.0.0.1/myvstup",
+        engine = create_engine("mysql://niko_yakovlev:Golddesk23/07@127.0.0.1/myvstup",
                                echo=False, encoding='utf-8')
     else:
         engine = create_engine(os.getenv('DATABASE_MYVSTUP') + "?charset=utf8",
                                echo=False, encoding='utf-8')
     add_engine_pidguard(engine)
     Base.metadata.create_all(engine)
-    Session.configure(bind=engine)
+    Session = sessionmaker(bind=engine)
+
+    return Session()
 
 
 def clean_db():
-    q = """
-    SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema='public'
-      AND table_type='BASE TABLE';"""
-    session = Session()
+    q = """SHOW TABLES;"""
+
     resp = session.execute(q)
     tables_names = [i[0] for i in resp]
+
+    if len(tables_names) == 0:
+        return
+
     if len(tables_names) != 0:
-        session.execute("DROP TABLE %s " % ','.join(tables_names))
+        session.execute(""" SET FOREIGN_KEY_CHECKS = 0; """)
+        for city in tables_names:
+            session.execute(""" TRUNCATE TABLE %s ;""" % city)
+        session.execute(""" SET FOREIGN_KEY_CHECKS = 1; """)
         session.commit()
 
 
 def populate_cities_table():
     logger.info("Populating cities...")
     data = get_city_links("http://vstup.info")
-    session = Session()
 
     session.add_all(
         [City(name=name, link=link) for name, link in data.items()]
@@ -78,7 +84,6 @@ def get_city_links(link):
 
 
 def populate_uni_info_table(cities=None):
-    session = Session()
 
     if cities:
         cities_obj = [c for c in session.query(City).filter(City.name.in_(cities))]
@@ -93,7 +98,7 @@ def populate_uni_info_table(cities=None):
             logger.info("City %s does not have any university." % city.name)
             continue
         for ind, item in enumerate(uni_links):
-            parser = VNZPage()
+            parser = VNZPage(logger)
             parser.parse_data(link=uni_links[ind][1])
             if parser.uni_info_table is not None:
                 university = University(
@@ -170,9 +175,6 @@ def run_parser(cities):
 if __name__ == "__main__":
 
     arg_parser = ArgumentParser('Parsing data from vstup.info')
-    arg_parser.add_argument('-n',
-                            '--name',
-                            help='If provided - create new db w/ provided name.')
     arg_parser.add_argument('-c',
                             '--clean_db',
                             help='Drop all data from db',
@@ -185,19 +187,24 @@ if __name__ == "__main__":
                             default=False)
     args = arg_parser.parse_args()
 
-    configure_db(args)
+    register_adapter(np.int64, addapt_numpy_float64)
+
+    logger = get_logger()
+
+    session = configure_db(args)
 
     if args.clean_db:
         clean_db()
 
     populate_cities_table()
 
-    session = Session()
     cities = [city.name for city in session.query(City).all()]
-    cities_chunks = []
-    for i in range(0, 2):
-        cities_chunks += [cities[i * 14:(i + 1) * 14]]
-    from multiprocessing import Pool
+    run_parser(cities)
 
-    with Pool(2) as p:
-        p.map(run_parser, cities_chunks)
+#    cities_chunks = []
+#    for i in range(0, 2):
+#        cities_chunks += [cities[i * 14:(i + 1) * 14]]
+#    from multiprocessing import Pool
+#
+#    with Pool(2) as p:
+#        p.map(run_parser, cities_chunks)
