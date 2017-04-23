@@ -31,7 +31,7 @@ def get_logger():
 def configure_db(args):
 
     if args.local_db:
-        engine = create_engine("mysql://niko_yakovlev:Golddesk23/07@127.0.0.1/myvstup",
+        engine = create_engine("mysql://user:password@127.0.0.1/myvstup",
                                echo=False, encoding='utf-8')
     else:
         engine = create_engine(os.getenv('DATABASE_MYVSTUP') + "?charset=utf8",
