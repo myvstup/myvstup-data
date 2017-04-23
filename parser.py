@@ -1,17 +1,20 @@
 import logging
+import multiprocessing
 import os
-import requests
 import re
-import pandas as pd
+from argparse import ArgumentParser
+
 import numpy as np
+import pandas as pd
+import requests
+from psycopg2.extensions import register_adapter, AsIs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from argparse import ArgumentParser
+
 from database import *
-from competition_page_parsers import CompetitionPage
+from tools.multiproc_guard import add_engine_pidguard
+from tools.multiproc_logging import install_mp_handler
 from vnz_page_parsers import VNZPage
-from multiproc_guard import add_engine_pidguard
-from psycopg2.extensions import register_adapter, AsIs
 
 
 def addapt_numpy_float64(numpy_float64):
@@ -31,7 +34,7 @@ def get_logger():
 def configure_db(args):
 
     if args.local_db:
-        engine = create_engine("mysql://user:password@127.0.0.1/myvstup",
+        engine = create_engine("mysql://niko_yakovlev:Golddesk23/07@127.0.0.1/myvstup",
                                echo=False, encoding='utf-8')
     else:
         engine = create_engine(os.getenv('DATABASE_MYVSTUP') + "?charset=utf8",
@@ -102,13 +105,13 @@ def populate_uni_info_table(cities=None):
             parser.parse_data(link=uni_links[ind][1])
             if parser.uni_info_table is not None:
                 university = University(
-                    name=parser.uni_info_table.ix['uni_name', 'uni_info'],
-                    type=parser.uni_info_table.ix['uni_type', 'uni_info'],
-                    address=parser.uni_info_table.ix['address', 'uni_info'],
-                    phones=parser.uni_info_table.ix['phones', 'uni_info'],
-                    website=parser.uni_info_table.ix['website', 'uni_info'],
-                    email=parser.uni_info_table.ix['email', 'uni_info'],
-                    link=uni_links[ind][1])
+                    name=str(parser.uni_info_table.ix['uni_name', 'uni_info']),
+                    type=str(parser.uni_info_table.ix['uni_type', 'uni_info']),
+                    address=str(parser.uni_info_table.ix['address', 'uni_info']),
+                    phones=str(parser.uni_info_table.ix['phones', 'uni_info']),
+                    website=str(parser.uni_info_table.ix['website', 'uni_info']),
+                    email=str(parser.uni_info_table.ix['email', 'uni_info']),
+                    link=str(uni_links[ind][1]))
                 university.city = city
                 session.add(university)
                 session.commit()
@@ -169,6 +172,8 @@ def get_universities_links(city_link):
 
 
 def run_parser(cities):
+    global session
+    session = configure_db(args)
     populate_uni_info_table(cities)
 
 
@@ -187,24 +192,28 @@ if __name__ == "__main__":
                             default=False)
     args = arg_parser.parse_args()
 
-    register_adapter(np.int64, addapt_numpy_float64)
-
+    install_mp_handler()
     logger = get_logger()
 
+    register_adapter(np.int64, addapt_numpy_float64)
     session = configure_db(args)
 
     if args.clean_db:
         clean_db()
 
     populate_cities_table()
-
     cities = [city.name for city in session.query(City).all()]
-    run_parser(cities)
 
-#    cities_chunks = []
-#    for i in range(0, 2):
-#        cities_chunks += [cities[i * 14:(i + 1) * 14]]
-#    from multiprocessing import Pool
-#
-#    with Pool(2) as p:
-#        p.map(run_parser, cities_chunks)
+    cities_chunks = []
+    for i in range(2):
+        cities_chunks += [cities[i * 14:(i + 1) * 14]]
+
+    process_list = []
+    for i in range(2):
+        process = multiprocessing.Process(target=run_parser,
+                                          args=(cities_chunks[i],))
+        process.start()
+        process_list.append(process)
+
+    for process in process_list:
+        process.join()
