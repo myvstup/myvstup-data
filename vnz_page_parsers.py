@@ -1,6 +1,9 @@
+import logging.config
 import pandas as pd
 import re
 import requests
+
+logging.config.fileConfig('./logging.conf')
 
 UNI_INFO_MAPPER = {
     'Назва ВНЗ:': 'uni_name',
@@ -136,10 +139,10 @@ class VNZparser:
 
 
 class VNZPage(VNZparser):
-    def __init__(self, logger):
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.passed = True
         self.data = pd.DataFrame()
-        self.logger = logger
         super(VNZparser).__init__()
 
     def parse_data(self, link):

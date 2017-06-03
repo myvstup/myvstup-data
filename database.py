@@ -10,7 +10,7 @@ class City(Base):
     __tablename__ = 'cities'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(50))
+    name = Column(String(100))
     link = Column(String(50))
     university = relationship('University', back_populates='city')
 
@@ -26,9 +26,9 @@ class University(Base):
     name = Column(String(500))
     type = Column(String(500))
     address = Column(String(500))
-    phones = Column(String(50))
-    website = Column(String(50))
-    email = Column(String(50))
+    phones = Column(String(500))
+    website = Column(String(500))
+    email = Column(String(500))
     link = Column(String(500))
 
     city = relationship("City", back_populates="university")
@@ -51,7 +51,7 @@ class Faculty(Base):
     num_applied = Column(Integer)
     num_entered = Column(Integer)
     num_recommended = Column(Integer)
-    required_subj = Column(String(500))
+    required_subj = Column(String(1000))
     degree = Column(String(500))
     degree_subname = Column(String(500))
     faculty = Column(String(500))

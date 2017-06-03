@@ -1,6 +1,9 @@
+import logging.config
 import pandas as pd
 import re
 import requests
+
+logging.config.fileConfig('./logging.conf')
 
 COMPETITION_MAPPER = {
     "ПІБ": "student_name",
@@ -15,8 +18,8 @@ COMPETITION_MAPPER = {
 
 
 class CompetitionPage:
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.passed = True
 
     def check_link(self):

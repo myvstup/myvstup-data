@@ -1,6 +1,6 @@
-import logging
+from configparser import ConfigParser
+import logging.config
 import multiprocessing
-import os
 import re
 from argparse import ArgumentParser
 
@@ -21,24 +21,10 @@ def addapt_numpy_float64(numpy_float64):
     return AsIs(numpy_float64)
 
 
-def get_logger():
-    logging.basicConfig(level=logging.INFO,
-                        datefmt="%Y-%m-%d%H:%M:%S",
-                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                        filename='parser.log',
-                        filemode='w')
+def configure_db(db_path):
 
-    return logging.getLogger(__name__)
-
-
-def configure_db(args):
-
-    if args.local_db:
-        engine = create_engine("mysql://niko_yakovlev:Golddesk23/07@127.0.0.1/myvstup",
-                               echo=False, encoding='utf-8')
-    else:
-        engine = create_engine(os.getenv('DATABASE_MYVSTUP') + "?charset=utf8",
-                               echo=False, encoding='utf-8')
+    engine = create_engine(str(db_path) + "?charset=utf8",
+                           echo=False, encoding='utf-8')
     add_engine_pidguard(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -87,7 +73,6 @@ def get_city_links(link):
 
 
 def populate_uni_info_table(cities=None):
-
     if cities:
         cities_obj = [c for c in session.query(City).filter(City.name.in_(cities))]
     else:
@@ -101,7 +86,7 @@ def populate_uni_info_table(cities=None):
             logger.info("City %s does not have any university." % city.name)
             continue
         for ind, item in enumerate(uni_links):
-            parser = VNZPage(logger)
+            parser = VNZPage()
             parser.parse_data(link=uni_links[ind][1])
             if parser.uni_info_table is not None:
                 university = University(
@@ -173,7 +158,7 @@ def get_universities_links(city_link):
 
 def run_parser(cities):
     global session
-    session = configure_db(args)
+    session = configure_db(DB_PATH)
     populate_uni_info_table(cities)
 
 
@@ -181,33 +166,57 @@ if __name__ == "__main__":
 
     arg_parser = ArgumentParser('Parsing data from vstup.info')
     arg_parser.add_argument('-c',
-                            '--clean_db',
+                            '--clean_run',
                             help='Drop all data from db',
                             action='store_true',
                             default=False)
-    arg_parser.add_argument('-l',
-                            '--local_db',
-                            help='Create local db.',
-                            action='store_true',
-                            default=False)
+    arg_parser.add_argument('-cf',
+                            '--config_file',
+                            help='Path to config file.',
+                            default="./parser.conf")
+    arg_parser.add_argument('-e',
+                            '--environment',
+                            help='Staging or production.',
+                            default="staging")
     args = arg_parser.parse_args()
 
+    # for multiprocessing
     install_mp_handler()
-    logger = get_logger()
 
+    # setting logger
+    # try:
+    logging.config.fileConfig("logging.conf")
+    # except Exception as e:
+    #     print("Failed setting up loggers with error {}".format(e))
+    logger = logging.getLogger(__name__)
+
+    # register new type
     register_adapter(np.int64, addapt_numpy_float64)
-    session = configure_db(args)
 
-    if args.clean_db:
+    # setting database
+    cp = ConfigParser()
+    cp.read(args.config_file)
+
+    if args.environment in cp.get("environments", "keys").split(","):
+        logger.info("Environment is set to {}".format(args.environment))
+
+    DB_PATH = cp.get("environment_{}".format(args.environment),
+                     "DB_PATH")
+    # setting database
+    session = configure_db(DB_PATH)
+    if args.clean_run:
         clean_db()
 
+    # populating cities table
     populate_cities_table()
     cities = [city.name for city in session.query(City).all()]
 
+    # splitting cities in chunks for multiprocessing
     cities_chunks = []
     for i in range(2):
         cities_chunks += [cities[i * 14:(i + 1) * 14]]
 
+    # starting parser in multiprocessing
     process_list = []
     for i in range(2):
         process = multiprocessing.Process(target=run_parser,
