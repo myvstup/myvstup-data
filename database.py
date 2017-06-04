@@ -59,8 +59,7 @@ class Faculty(Base):
     specialization_2 = Column(String(500))
 
     university = relationship("University", back_populates="faculty")
-    student = relationship("Student",
-                           back_populates="applied_to")
+    student = relationship("Student", back_populates="faculty")
 
     def __repr__(self):
         return "<Faculty(uni_id='%s', link='%s')>" % (
@@ -83,7 +82,7 @@ class Student(Base):
     additional_points = Column(String(20))
     original_docs = Column(String(10))
 
-    applied_to = relationship("Faculty", back_populates="student")
+    faculty = relationship("Faculty", back_populates="student")
 
     def __repr__(self):
         return "<Student(student_name='%s', student_points='%s', original_docs='%s')>" % (

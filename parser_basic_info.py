@@ -103,6 +103,7 @@ def populate_uni_info_table(cities=None):
             f_counter = 0
             if parser.data.shape[0] != 0:
                 parser.data.reset_index(drop=True, inplace=True)
+                parser.data = parser.data.where((pd.notnull(parser.data)), None)
                 logger.info("Number of faculties %s" % parser.data.shape[0])
                 for row in parser.data.index:
                     faculty = Faculty(

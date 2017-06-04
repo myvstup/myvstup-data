@@ -27,30 +27,37 @@ class CompetitionPage:
         try:
             p = r"\<table id=\"(\d+)\" class=\"tablesaw tablesaw\-stack"
             self.competition_id = int(re.search(p, self.html).group(1))
-        except ValueError:
-            self.logger.info("Can't parse competition on %s" % self.link)
+        except Exception as e:
+            self.logger.warning("Can't get competition id %s" % self.link)
+            self.logger.info("Failed with error %s" % e)
             self.passed = False
 
     def read_dataframe(self):
         try:
-            self.table = pd.read_html(self.html, attrs={'id': str(self.competition_id)})[0]
+            self.table = pd.read_html(self.html, attrs={'id': str(self.competition_id)}, flavor='html5lib')[0]
         except TypeError:
-            self.logger.info("Can't read table on %s" % self.link)
+            self.logger.warning("Can't read table on %s" % self.link)
             self.passed = False
         except IndexError:
-            self.logger.info("Something strange is going on in w/ tables %s" % self.link)
+            self.logger.warning("Something strange is going on in w/ tables %s" % self.link)
             self.passed = False
 
     def format_dataframe(self):
         self.table.rename(columns=COMPETITION_MAPPER, inplace=True)
         self.table = self.table.ix[:self.table.shape[0] - 2]
         self.table.set_index('#', inplace=True)
-        self.table['priority'] = self.table['priority'].replace('—', 0)
+        if "priority" not in self.table.columns:
+            self.table['priority'] = None
+        else:
+            self.table['priority'] = self.table['priority'].replace('—', 0)
+            self.table['priority'] = self.table['priority'].astype(int)
 
     def get_data(self, link):
         self.link = link
         self.check_link()
-        self.read_dataframe()
         if self.passed:
-            self.format_dataframe()
-            return self.table
+            self.read_dataframe()
+            if self.passed:
+                self.format_dataframe()
+                return self.table
+        return pd.DataFrame()
