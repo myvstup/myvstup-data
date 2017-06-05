@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from database import *
 from tools.multiproc_guard import add_engine_pidguard
 from tools.multiproc_logging import install_mp_handler
-from vnz_page_parsers import VNZPage
+from basic_info import VNZPage
 
 
 def addapt_numpy_float64(numpy_float64):
@@ -200,6 +200,9 @@ if __name__ == "__main__":
 
     if args.environment in cp.get("environments", "keys").split(","):
         logger.info("Environment is set to {}".format(args.environment))
+    else:
+        logger.info("Wrong environment. Valid only : staging/production".format(args.environment))
+        exit()
 
     DB_PATH = cp.get("environment_{}".format(args.environment),
                      "DB_PATH")

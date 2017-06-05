@@ -20,27 +20,27 @@ COMPETITION_MAPPER = {
 class CompetitionPage:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.passed = True
+        self.table_passed = True
+        self.link_passed = True
 
-    def check_link(self):
-        self.html = requests.get(self.link).content.decode()
+    def check_link(self, link):
+        self.html = requests.get(link).content.decode()
         try:
             p = r"\<table id=\"(\d+)\" class=\"tablesaw tablesaw\-stack"
             self.competition_id = int(re.search(p, self.html).group(1))
         except Exception as e:
-            self.logger.warning("Can't get competition id %s" % self.link)
+            self.logger.warning("Can't get competition id %s" % link)
             self.logger.info("Failed with error %s" % e)
-            self.passed = False
+            self.link_passed = False
 
     def read_dataframe(self):
         try:
-            self.table = pd.read_html(self.html, attrs={'id': str(self.competition_id)}, flavor='html5lib')[0]
-        except TypeError:
-            self.logger.warning("Can't read table on %s" % self.link)
-            self.passed = False
-        except IndexError:
-            self.logger.warning("Something strange is going on in w/ tables %s" % self.link)
-            self.passed = False
+            self.table = pd.read_html(self.html,
+                                      attrs={'id': str(self.competition_id)},
+                                      flavor='html5lib')[0]
+        except Exception as e:
+            self.logger.warning("Can't read table. Failed with error : %s" % e)
+            self.table_passed = False
 
     def format_dataframe(self):
         self.table.rename(columns=COMPETITION_MAPPER, inplace=True)
@@ -53,11 +53,10 @@ class CompetitionPage:
             self.table['priority'] = self.table['priority'].astype(int)
 
     def get_data(self, link):
-        self.link = link
-        self.check_link()
-        if self.passed:
+        self.check_link(link)
+        if self.link_passed:
             self.read_dataframe()
-            if self.passed:
-                self.format_dataframe()
-                return self.table
+        if self.table_passed:
+            self.format_dataframe()
+            return self.table
         return pd.DataFrame()

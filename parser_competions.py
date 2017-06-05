@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 
 import numpy as np
 import pandas as pd
+import time
 from psycopg2.extensions import register_adapter, AsIs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -47,7 +48,7 @@ def get_competition_links():
 def populate_competition_info(links=None):
     parser = CompetitionPage()
     faculty_query = session.query(Faculty)
-
+    counter = 0
     for faculty_id, link in links:
         if link == "":
             logger.warning("Wrong link for faculty_id = %s" % faculty_id)
@@ -76,7 +77,9 @@ def populate_competition_info(links=None):
             student.faculty = faculty
             session.add(student)
             session.commit()
+        counter += 1
         logger.info("{} data points inserted from {}".format(competition_pdf.shape[0], link))
+    logger.info("Done {} faculties.".format(counter))
 
 def run_parser(links_chunk):
     global session
@@ -97,6 +100,7 @@ if __name__ == "__main__":
                             default="staging")
     args = arg_parser.parse_args()
 
+    start_time = time.now()
     # for multiprocessing
     install_mp_handler()
 
@@ -116,6 +120,9 @@ if __name__ == "__main__":
 
     if args.environment in cp.get("environments", "keys").split(","):
         logger.info("Environment is set to {}".format(args.environment))
+    else:
+        logger.info("Wrong environment. Valid only : staging/production".format(args.environment))
+        exit()
 
     DB_PATH = cp.get("environment_{}".format(args.environment),
                      "DB_PATH")
@@ -140,3 +147,5 @@ if __name__ == "__main__":
 
     for process in process_list:
         process.join()
+
+    logger.info("Done in {} sec.".format(time.now() - start_time))
