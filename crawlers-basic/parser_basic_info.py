@@ -1,20 +1,18 @@
-from configparser import ConfigParser
 import logging.config
 import multiprocessing
 import re
 from argparse import ArgumentParser
+from configparser import ConfigParser
 
 import numpy as np
 import pandas as pd
 import requests
+from basic_info import VNZPage
 from psycopg2.extensions import register_adapter, AsIs
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from database import *
 from tools.multiproc_guard import add_engine_pidguard
 from tools.multiproc_logging import install_mp_handler
-from basic_info import VNZPage
 
 
 def addapt_numpy_float64(numpy_float64):
@@ -89,7 +87,7 @@ def populate_uni_info_table(cities=None):
             parser = VNZPage()
             parser.parse_data(link=uni_links[ind][1])
             if parser.uni_info_table is not None:
-                university = University(
+                university = School(
                     name=str(parser.uni_info_table.ix['uni_name', 'uni_info']),
                     type=str(parser.uni_info_table.ix['uni_type', 'uni_info']),
                     address=str(parser.uni_info_table.ix['address', 'uni_info']),
