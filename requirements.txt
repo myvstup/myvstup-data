@@ -1,3 +1,4 @@
+Scrapy==1.4.0
 appdirs==1.4.3
 numpy==1.12.1
 packaging==16.8

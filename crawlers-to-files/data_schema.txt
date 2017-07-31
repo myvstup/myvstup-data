@@ -1,0 +1,13 @@
+####### CITY LAYER #######
+
+CITIES FOLDER
+
+####### UNIVER LAYER ######
+
+UNIVERSITIES FOLDERS
+_city_link.txt
+_universities_info.csv
+
+###### FACULTY LAYER #######
+
+COMPETITION FOLDER
