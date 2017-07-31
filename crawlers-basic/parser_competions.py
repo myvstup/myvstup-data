@@ -1,20 +1,18 @@
-from configparser import ConfigParser
 import logging.config
 import multiprocessing
+import time
 from argparse import ArgumentParser
+from configparser import ConfigParser
 
 import numpy as np
 import pandas as pd
-import time
+from competitions import CompetitionPage
 from psycopg2.extensions import register_adapter, AsIs
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text as query_text
 
 from database import *
 from tools.multiproc_guard import add_engine_pidguard
 from tools.multiproc_logging import install_mp_handler
-from competitions import CompetitionPage
 
 
 def addapt_numpy_float64(numpy_float64):
@@ -81,6 +79,7 @@ def populate_competition_info(links=None):
         logger.info("{} data points inserted from {}".format(competition_pdf.shape[0], link))
     logger.info("Done {} faculties.".format(counter))
 
+
 def run_parser(links_chunk):
     global session
     session = configure_db(DB_PATH)
@@ -100,7 +99,7 @@ if __name__ == "__main__":
                             default="staging")
     args = arg_parser.parse_args()
 
-    start_time = time.now()
+    start_time = time.time()
     # for multiprocessing
     install_mp_handler()
 
